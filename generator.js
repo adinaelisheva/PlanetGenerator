@@ -2,6 +2,19 @@ var Planet = function() {
     var rand = function(n) { return ~~(Math.random() * n); };
 
     var Types = { T: 0, G: 1 };
+    
+    var ices = ['water ice', 'methane ice', 'dry ice', 'ammonia ice', 'nitrogen ice'];
+    var silicates = ['olivine', 'basalt', 'quartz', 'magnesium silicate'];
+    
+    var densityMap = {
+      'water ice': 0.9,
+      'methane ice': 0.9,
+      'dry ice': 1.5,
+      'ammonia ice': 0.9,
+      'nitrogen ice': 0.85,
+      'silicate': 2.7,
+      'iron': 7.8
+    };
 
     var generatePlanetName = function() {
   
@@ -57,13 +70,76 @@ var Planet = function() {
       return rand(2);
     };
     
+    //helper function to add some rock names to a composition map
+    var addSilicateNames = function(map) {
+      var amt = map.silicate;
+      
+      var tworocks = (rand(3) === 1); //30% chance of splitting the composition
+      
+      if (tworocks) {      
+        amt = rand(map.silicate-1) + 1;
+      }
+      
+      var rock = silicates[rand(silicates.length)];
+      map[rock] = amt;
+      
+      if (tworocks) {
+        //now add the second rock, but make sure it's not a duplicate
+        do {
+          rock = silicates[rand(silicates.length)];
+        } while(map[rock]);
+        
+        //now rock will be something not in the map yet
+        map[rock] = map.silicate - amt;
+      }
+      
+      return map;
+    }
+    
+    //returns a map from material to percentage
     var generatePlanetComposition = function(type) {
-      return type; //for now
+      if(type === Types.T) {
+        //terrestrial planets are assumed to be made of three things:
+        // 1) metallic (iron) core
+        // 2) silicate rocks
+        // 3) various ices
+        var core = rand(100);
+        var silicate = rand(100 - core);
+        
+        var ice = 100 - core - silicate;
+        var icename = ices[rand(ices.length)];
+        
+        //for density calculations, we only care about total silicate amount
+        var ret = { 'iron': core, 'silicate': silicate };
+        ret[icename] = ice;
+        
+        //however, for color and interest, we care about specific rocks
+        ret = addSilicateNames(ret);
+        return ret;          
+      } else {
+        return { 'gas': 1 }
+      }
     };
     
     //note: this is g/cm^-3
     var generatePlanetDensity = function(composition, radius) {
-      return composition === Types.T ? 5 : 1.25; //for now
+      
+      var density = 0;
+      
+      var components = Object.keys(composition);
+      
+      for(var c = 0; c < components.length; c++) {
+        var item = components[c];
+        if (densityMap[item]) {
+          density += densityMap[item] * composition[item];
+        }
+      }
+      
+      //add some noise here to compensate for my vast oversimplifications
+      var factor = (rand(10) / 100) + .95;
+      density *= factor;
+      
+      return density/100;
     };
     
     var generatePopulation = function(type) {
@@ -81,6 +157,19 @@ var Planet = function() {
   
     };
     
+    //this is the semi-major axis, in AU
+    var generateAxis = function(type) {
+      
+      if(type === Types.G) {
+        //runs from 1.5AU to 40AU
+        return (rand(385) + 15) / 10;
+      } else {
+        //runs from 0.02AU to 1.52
+        return (rand(150) + 2) / 100;
+      }
+    } 
+    
+    
     //this is in km I think
     var generateRadius = function(type) {
       
@@ -95,7 +184,7 @@ var Planet = function() {
     var getRandomHexRGB = function() {
       var ret = rand(255).toString(16);
       while(ret.length < 2) {
-        ret = ret + '0';
+        ret = '0' + ret;
       }
       return ret;
     }
@@ -115,9 +204,15 @@ var Planet = function() {
       
       for(var i = 0; i < 6; i+=2) {
         var hex = color.substring(i,i+2);
-        hex = Number.parseInt('0x' + hex);
+        hex = Number.parseInt(hex, 16);
         hex = Math.max(0,hex - 0x10);
-        ret += hex.toString(16);
+        
+        str = hex.toString(16);
+        while(str.length < 2) {
+          str = '0' + str;
+        }
+        
+        ret += str;
       }
       
       return ret;
@@ -140,7 +235,7 @@ var Planet = function() {
       
       ctx.fillStyle = getRandomHexColor();
       ctx.strokeStyle = getDarkerColor(ctx.fillStyle);
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 3;
       
       ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
       ctx.fill();
@@ -151,12 +246,16 @@ var Planet = function() {
 
     /* END PUBLIC API */
     
-    /* CONSTRUCTOR */
+    /* "CONSTRUCTOR" SECTION */
     
     this.name = generatePlanetName();
     this.type = generatePlanetType();
     this.composition = generatePlanetComposition(this.type);
     this.radius = generateRadius(this.type);
+    this.axis = generateAxis(this.type);
     this.density = generatePlanetDensity(this.composition, this.radius);
     this.population = generatePopulation(this.type);
+    
+    /* END CONSTRUCTOR */
+    
 }

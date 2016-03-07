@@ -1,6 +1,6 @@
 ### Planet Generator
 
-![Site screenshot](http://stuff.karantza.org/planets/sitepreview.png)
+![Site preview](http://stuff.karantza.org/planets/site.png)
 
 This is a small javascript library designed to output random (imaginary) planets. The names are generated following some arbitrary rules I made up. Composition, densities, locations, etc are calculated realistically based on some randomly-chosen initial constraints. Populations are similarly randomly chosen.
 
