@@ -22,7 +22,7 @@ var Planet = function() {
       'gas core': 25 //not a real substance, basing on jupiter
     };
 
-    var generatePlanetName = function() {
+    this._generatePlanetName = function() {
   
       var addRandChar = function(str, arr) {
         var x = rand(arr.length);
@@ -69,12 +69,33 @@ var Planet = function() {
       //this is dumb
       ret = ret.replace(/^./,ret.substring(0,1).toUpperCase());
 
-      return ret;
+      this.name = ret;
     };
 
-    var generatePlanetType = function() {
-      return rand(2);
+        
+    //this is in km
+    this._generatePlanetRadius = function() {
+      
+      if(this.type === Types.G) {
+        this.radius = rand(85000) + 13000;
+      } else {
+        this.radius = rand(12800) + 200;
+      }
+  
     };
+    
+        
+    //this is the semi-major axis, in AU
+    this._generatePlanetAxis = function() {
+      
+      if(this.type === Types.G) {
+        //runs from 1.5AU to 40AU
+        this.axis = (rand(385) + 15) / 10;
+      } else {
+        //runs from 0.02AU to 1.52
+        this.axis = (rand(150) + 2) / 100;
+      }
+    } 
     
     //helper function to add some rock names to a composition map
     var addSilicateNames = function(map) {
@@ -103,8 +124,8 @@ var Planet = function() {
     }
     
     //returns a map from material to percentage
-    var generatePlanetComposition = function(type) {
-      if(type === Types.T) {
+    this._generatePlanetComposition = function() {
+      if(this.type === Types.T) {
         //terrestrial planets are assumed to be made of three things:
         // 1) metallic (iron) core
         // 2) silicate rocks
@@ -116,19 +137,18 @@ var Planet = function() {
         var icename = ices[rand(ices.length)];
         
         //for density calculations, we only care about total silicate amount
-        var ret = { 'iron': core, 'silicate': silicate };
-        ret[icename] = ice;
+        this.composition = { 'iron': core, 'silicate': silicate };
+        this.composition[icename] = ice;
         
         //however, for color and interest, we care about specific rocks
-        ret = addSilicateNames(ret);
-        return ret;          
+        this.composition = addSilicateNames(this.composition);
       } else {
-        var ret = {};
+        this.composition = {};
         var number = rand(3) + 1; //number of gasses to include in this planet
         
         var core = rand(4) + 4;
         var total = 100 - core;
-        ret['gas core'] = core;
+        this.composition['gas core'] = core;
         
         var gasname = gasses[rand(gasses.length)];
         
@@ -136,34 +156,48 @@ var Planet = function() {
         for(var i = 0; i < number - 1 ; i++) {
           
           //save the current gas and update total
-          ret[gasname] = rand(total);
-          total -= ret[gasname];
+          this.composition[gasname] = rand(total);
+          total -= this.composition[gasname];
           
           //find an unused gas
           do {
             gasname = gasses[rand(gasses.length)];
-          } while (ret[gasname]);
+          } while (this.composition[gasname]);
           
         }
         
         //save final gas
-        ret[gasname] = total;
+        this.composition[gasname] = total;
         
-        return ret;
       }
     };
     
+    this._generatePlanetClouds = function() {
+      this.cloudCover = 0;
+      if (this.type === Types.G) { return; }
+      
+      //my marginally-accurate assumption. If you're too small, no clouds
+      if (this.radius < 5000) { return; }
+     
+      //clouds aren't /that/ likely, but more likely with larger planets
+      if(rand(10) > (1 + 8*(this.radius - 5000)/8000)) { return; }
+      
+      //if we get here, make some clouds!
+      this.cloudCover = rand(100);
+      
+    }
+    
     //note: this is g/cm^-3
-    var generatePlanetDensity = function(composition, radius) {
+    this._generatePlanetDensity = function() {
       
       var density = 0;
       
-      var components = Object.keys(composition);
+      var components = Object.keys(this.composition);
       
       for(var c = 0; c < components.length; c++) {
         var item = components[c];
         if (densityMap[item]) {
-          density += densityMap[item] * composition[item];
+          density += densityMap[item] * this.composition[item];
         }
       }
       
@@ -174,67 +208,81 @@ var Planet = function() {
       return density/100;
     };
     
-    var adjustComposition = function(comp, type) {
-      if(type === Types.T) { return comp; }
+    var sumIces = function(comp){
+      var keys = Object.keys(comp);
+      var total = 0;
+      for(var i = 0; i < keys.length; i++) {
+        var item = keys[i];
+        if(item.endsWith('ice')) { total += comp[item]; }
+      }
+      return total;
+    };
+    
+    var sumMafics = function(comp) {
+      var total = 0;
+      if (comp.olivine) { total += comp.olivine; }
+      if (comp.basalt) { total += comp.basalt; }
+      return total;
+    };
+    
+    this._generatePlanetAlbedo = function() {
+      var wobble = (rand(10) - 5)/100; //this will be used by all cases
+      this.albedo = 0;
+      if (this.type === Types.G) {
+        if (this.composition.methane > 0) {
+          this.albedo = .4 + wobble;
+        } else {
+          this.albedo = .5 + wobble;
+        }
+        
+      } else {
+      
+        var ice = sumIces(this.composition)/100;
+        var mafic = sumMafics(this.composition)/100;
+        var felsic = this.composition.silicate/100 - mafic;
+        
+        var landAlbedo = (ice * .7 + mafic * .1 + felsic * .3) + wobble;
+        var cloudAlbedo =  .6 + rand(.3);
+        var cc = this.cloudCover / 100;
+        this.albedo = cc*cloudAlbedo + (1 - cc)*landAlbedo;
+        
+      }
+      this.albedo = Math.round(this.albedo*100)/100;
+    }
+    
+    this._adjustComposition = function() {
+      if(this.type === Types.T) { return; }
       
       //it's a gas planet, remove that 'core' to leave some ~mystery~
       
       //delete might be inefficient? but max 4 things in this object so whatever
-      delete comp['gas core'];
+      delete this.composition['gas core'];
       
-      var keys = Object.keys(comp);
+      var keys = Object.keys(this.composition);
       
       var total = 0;
       for(var i = 0; i < keys.length; i++) {
         var item = keys[i];
-        total += comp[item];
+        total += this.composition[item];
       }
       
       for(var i = 0; i < keys.length; i++) {
         var item = keys[i];
-        comp[item] = Math.round(comp[item]/total * 100);
-        if (comp[item] === 0) { delete comp[item]; }
+        this.composition[item] = Math.round(this.composition[item]/total * 100);
+        if (this.composition[item] === 0) { delete this.composition[item]; }
       }
-      
-      return comp;
       
     }
     
-    var generatePopulation = function(type) {
-      var order = (type === Types.G ? 4 : 7);
-      var ret = 0;
+    this._generatePopulation = function() {
+      var order = (this.type === Types.G ? 4 : 7);
+      this.population = 0;
       order = rand(order);
       if(order === 1) { order = 0; } //single-digit populations don't make sense
       while(order > 0) {
         order--;
-        ret *= 10;
-        ret += rand(10);
-      }
-      
-      return ret;
-  
-    };
-    
-    //this is the semi-major axis, in AU
-    var generateAxis = function(type) {
-      
-      if(type === Types.G) {
-        //runs from 1.5AU to 40AU
-        return (rand(385) + 15) / 10;
-      } else {
-        //runs from 0.02AU to 1.52
-        return (rand(150) + 2) / 100;
-      }
-    } 
-    
-    
-    //this is in km I think
-    var generateRadius = function(type) {
-      
-      if(type === Types.G) {
-        return rand(85000) + 13000;
-      } else {
-        return rand(12800) + 200;
+        this.population *= 10;
+        this.population += rand(10);
       }
   
     };
@@ -306,15 +354,16 @@ var Planet = function() {
     
     /* "CONSTRUCTOR" SECTION */
     
-    this.name = generatePlanetName();
-    this.type = generatePlanetType();
-    this.radius = generateRadius(this.type);
-    this.axis = generateAxis(this.type);
-    var composition = generatePlanetComposition(this.type);
-    this.gascore = composition['gas core'];
-    this.density = generatePlanetDensity(composition, this.radius);
-    this.composition = adjustComposition(composition, this.type);
-    this.population = generatePopulation(this.type);
+    this._generatePlanetName();
+    this.type = rand(2);
+    this._generatePlanetRadius();
+    this._generatePlanetAxis();
+    this._generatePlanetComposition();
+    this.density = this._generatePlanetDensity();
+    this._adjustComposition();
+    this._generatePlanetClouds();
+    this._generatePlanetAlbedo()
+    this._generatePopulation();
     
     /* END CONSTRUCTOR */
     
