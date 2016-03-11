@@ -5,7 +5,9 @@ var Planet = function() {
     
     var ices = ['water ice', 'methane ice', 'dry ice', 'ammonia ice', 'nitrogen ice'];
     var silicates = ['olivine', 'basalt', 'quartz', 'magnesium silicate'];
+    var gasses = ['hydrogen', 'helium', 'methane'];
     
+    //in g/cm^3
     var densityMap = {
       'water ice': 0.9,
       'methane ice': 0.9,
@@ -13,7 +15,11 @@ var Planet = function() {
       'ammonia ice': 0.9,
       'nitrogen ice': 0.85,
       'silicate': 2.7,
-      'iron': 7.8
+      'iron': 7.8,
+      'hydrogen': 0.00009,
+      'helium': 0.000164,
+      'methane': 0.000656,
+      'gas core': 25 //not a real substance, basing on jupiter
     };
 
     var generatePlanetName = function() {
@@ -117,7 +123,33 @@ var Planet = function() {
         ret = addSilicateNames(ret);
         return ret;          
       } else {
-        return { 'gas': 1 }
+        var ret = {};
+        var number = rand(3) + 1; //number of gasses to include in this planet
+        
+        var core = rand(4) + 4;
+        var total = 100 - core;
+        ret['gas core'] = core;
+        
+        var gasname = gasses[rand(gasses.length)];
+        
+        //loop over all but the last gas
+        for(var i = 0; i < number - 1 ; i++) {
+          
+          //save the current gas and update total
+          ret[gasname] = rand(total);
+          total -= ret[gasname];
+          
+          //find an unused gas
+          do {
+            gasname = gasses[rand(gasses.length)];
+          } while (ret[gasname]);
+          
+        }
+        
+        //save final gas
+        ret[gasname] = total;
+        
+        return ret;
       }
     };
     
@@ -141,6 +173,32 @@ var Planet = function() {
       
       return density/100;
     };
+    
+    var adjustComposition = function(comp, type) {
+      if(type === Types.T) { return comp; }
+      
+      //it's a gas planet, remove that 'core' to leave some ~mystery~
+      
+      //delete might be inefficient? but max 4 things in this object so whatever
+      delete comp['gas core'];
+      
+      var keys = Object.keys(comp);
+      
+      var total = 0;
+      for(var i = 0; i < keys.length; i++) {
+        var item = keys[i];
+        total += comp[item];
+      }
+      
+      for(var i = 0; i < keys.length; i++) {
+        var item = keys[i];
+        comp[item] = Math.round(comp[item]/total * 100);
+        if (comp[item] === 0) { delete comp[item]; }
+      }
+      
+      return comp;
+      
+    }
     
     var generatePopulation = function(type) {
       var order = (type === Types.G ? 4 : 7);
@@ -250,10 +308,12 @@ var Planet = function() {
     
     this.name = generatePlanetName();
     this.type = generatePlanetType();
-    this.composition = generatePlanetComposition(this.type);
     this.radius = generateRadius(this.type);
     this.axis = generateAxis(this.type);
-    this.density = generatePlanetDensity(this.composition, this.radius);
+    var composition = generatePlanetComposition(this.type);
+    this.gascore = composition['gas core'];
+    this.density = generatePlanetDensity(composition, this.radius);
+    this.composition = adjustComposition(composition, this.type);
     this.population = generatePopulation(this.type);
     
     /* END CONSTRUCTOR */
