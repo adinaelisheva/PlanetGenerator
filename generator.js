@@ -172,18 +172,25 @@ var Planet = function() {
       }
     };
     
-    this._generatePlanetClouds = function() {
+    this._generatePlanetCloudsAndRings = function() {
       this.cloudCover = 0;
-      if (this.type === Types.G) { return; }
+      this.rings = 0;
+      if (this.type === Types.G) { 
+        var r = rand(10);
+        if (r  > 4) {
+          this.rings = r > 8 ? 2 : 1;
+        }      
+      } else {
       
-      //my marginally-accurate assumption. If you're too small, no clouds
-      if (this.radius < 5000) { return; }
+        //my marginally-accurate assumption. If you're too small, no clouds
+        if (this.radius < 5000) { return; }
      
-      //clouds aren't /that/ likely, but more likely with larger planets
-      if(rand(10) > (1 + 8*(this.radius - 5000)/8000)) { return; }
+        //clouds aren't /that/ likely, but more likely with larger planets
+        if(rand(10) > (1 + 8*(this.radius - 5000)/8000)) { return; }
       
-      //if we get here, make some clouds!
-      this.cloudCover = rand(100);
+        //if we get here, make some clouds!
+        this.cloudCover = rand(100);
+      }
       
     }
     
@@ -361,7 +368,7 @@ var Planet = function() {
     this._generatePlanetComposition();
     this.density = this._generatePlanetDensity();
     this._adjustComposition();
-    this._generatePlanetClouds();
+    this._generatePlanetCloudsAndRings();
     this._generatePlanetAlbedo()
     this._generatePopulation();
     
