@@ -30,7 +30,7 @@ var Planet = function() {
         return str;
       }
 
-      var vowels = ['a','a','e','e','i','i','o','o','u','ea','ie','ou','oi'];
+      var vowels = ['a','a','e','e','i','i','o','o','u','ea','ie','ou','oi','ia','io','eo'];
       var consonants = ['b','d','f','g','k','l','m','n','p','r','s','t','v','z']
       var begins = ['c','h','j','w','bl','br','cr','cl','fr','fl','gr','gl','pr',
                     'pl','tr','ts','sk','st','tr','sp','spr','str',];
