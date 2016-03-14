@@ -176,10 +176,7 @@ var Planet = function() {
       this.cloudCover = 0;
       this.rings = 0;
       if (this.type === Types.G) { 
-        var r = rand(10);
-        if (r  > 4) {
-          this.rings = r > 8 ? 2 : 1;
-        }      
+        this.rings = rand(2) > 0;
       } else {
       
         //my marginally-accurate assumption. If you're too small, no clouds
@@ -344,6 +341,47 @@ var Planet = function() {
       
     };
     
+    var drawRing = function(ctx, cx, cy, radius, minradius, color) {
+      //set up colors and width
+      ctx.save()
+      var ringwidth = Math.min(rand(20) + 2, radius - minradius);
+      ctx.lineWidth = ringwidth;
+      ctx.strokeStyle = hslToHex(getDarkerColor(color, rand(40)/100 - 0.2));
+      
+      ctx.save();
+      ctx.globalCompositeOperation = "destination-over";
+      ctx.scale(1, 0.5);
+      ctx.translate(0,ctx.canvas.height/2);
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, -Math.PI, Math.PI);
+      ctx.stroke();
+      ctx.restore();
+    
+      //now draw bottom ring
+      ctx.save();
+      ctx.scale(1, 0.5);
+      ctx.translate(0,ctx.canvas.height/2);
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI);
+      ctx.stroke();
+      ctx.restore();
+      
+      //restore back to original widths and color
+      ctx.restore();
+      
+      //return a new, smaller radius with a gap
+      return radius - ringwidth - rand(2) - 2;
+    };
+    
+    var drawRings = function(ctx, cx, cy, radius, color) {
+      var rings = rand(2) + 2;
+      var ringRad = ((rand(4) + 13) / 10) * radius;
+      radius += 7; //buffer includes eventual outline width
+      for(var i = 0; i < rings; i++ && ringRad > radius) {
+        ringRad = drawRing(ctx, cx, cy, ringRad, radius, color);
+      }
+    }
+    
     var decorateImageG = function(ctx) {
     
     };
@@ -470,7 +508,8 @@ var Planet = function() {
       
       var color = this._getColorFromComposition();
       ctx.fillStyle = hslToHex(color);
-      ctx.strokeStyle = hslToHex(getDarkerColor(color));
+      var strokeColor = getDarkerColor(color);
+      ctx.strokeStyle = hslToHex(strokeColor);
       ctx.lineWidth = 3;
       
       ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
@@ -483,10 +522,16 @@ var Planet = function() {
         decorateImageG(ctx, color);
       }
       
-      //now draw the outline
+      
+      //finally, draw the outline
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
       ctx.stroke();
+      
+      //finally-finally, draw any rings
+      if(this.rings > 0) {
+        drawRings(ctx,cx,cy,radius, strokeColor);
+      }
     
     };
     
