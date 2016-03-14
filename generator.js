@@ -294,43 +294,165 @@ var Planet = function() {
   
     };
     
-    var getRandomHexRGB = function() {
-      var ret = rand(255).toString(16);
-      while(ret.length < 2) {
-        ret = '0' + ret;
-      }
-      return ret;
-    }
-    
-    var getRandomHexColor = function(){
-      return '#' + 
-             getRandomHexRGB() +
-             getRandomHexRGB() +
-             getRandomHexRGB();
-    }
-    
-    //takes in a css RGB string, eg: '#abcdef'
-    var getDarkerColor = function(color){
-      color = color.substring(1); //remove the '#'
-      
-      var ret = '#';
-      
-      for(var i = 0; i < 6; i+=2) {
-        var hex = color.substring(i,i+2);
-        hex = Number.parseInt(hex, 16);
-        hex = Math.max(0,hex - 0x10);
-        
-        str = hex.toString(16);
-        while(str.length < 2) {
-          str = '0' + str;
+    this._getColorFromComposition = function(){
+      if (this.type === Types.G) {
+        if (this.composition.methane && this.composition.methane > 0) {
+          //uranus is only 2% methane and still very blue!
+          return getMethaneGasColor();
         }
-        
-        ret += str;
+        return getOtherGasColor();
+      } else {
+        var ices = sumIces(this.composition);
+        if (ices > 50) {
+          return getIceColor();
+        } else {
+          return getSilicateColor();
+        }
       }
-      
-      return ret;
+      //default: return a white planet
+      return { h: 0, s: 0, l: 1 };
+    };
     
+    var meteorStrike = function(ctx, num) {
+      for(var i = 0; i < num; i++) {
+        var w = ctx.canvas.width;
+        var h = ctx.canvas.height;
+        var x = rand(w);
+        var y = rand(h);
+        var rad = rand(Math.min(w,h)/15) + 1;
+        ctx.beginPath();    
+        ctx.arc(x, y, rad, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    };
+    
+    var decorateImageT = function(ctx, color) {
+      if (this.cloudCover > 90) {
+        //you basically can't see anything past the clouds anyway
+        return;
+      }
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-atop';
+      
+      //do a couple rounds of cratering
+      ctx.fillStyle = hslToHex(getDarkerColor(color,0.08));
+      meteorStrike(ctx,rand(300));
+      ctx.fillStyle = hslToHex(getDarkerColor(color,0.05));
+      meteorStrike(ctx,rand(250));
+
+      ctx.restore();
+      
+    };
+    
+    var decorateImageG = function(ctx) {
+    
+    };
+    
+    //*** Utility Functions ***//
+    
+    //HSL/RGB functions modified from http://axonflux.com/handy-rgb-to-hsl-and-rgb-to-hsv-color-model-c
+    
+    //hsl is [0,1] and rgb is [0,255]
+    //input: {h, s, l}. return: {r, g, b}
+    var hslToRgb = function(color) {
+      
+      var h = color.h;
+      var s = color.s;
+      var l = color.l;
+      
+      var r = l;
+      var g = l;
+      var b = l;
+
+      if (s !== 0){
+        var hue2rgb = function hue2rgb(p, q, t){
+          if(t < 0) t += 1;
+          if(t > 1) t -= 1;
+          if(t < 1/6) return p + (q - p) * 6 * t;
+          if(t < 1/2) return q;
+          if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+          return p;
+        }
+
+        var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        var p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+      }
+
+      return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255)};
     }
+    
+    //color is [0,255]
+    var rgbToHex = function(color) {
+      var r = color.r.toString(16);
+      var g = color.g.toString(16);
+      var b = color.b.toString(16);
+      if (r.length < 2) { r = '0' + r; }
+      if (g.length < 2) { g = '0' + g; }
+      if (b.length < 2) { b = '0' + b; }
+      
+      return '#' + r + g + b;
+    };
+    
+    var hslToHex = function(color) {
+      return rgbToHex(hslToRgb(color));
+    };
+    
+    //this takes in 2 {h, s, l} colors and returns their average
+    var getAverageColor = function(c1, c2) {
+      return { h: (c1.h + c2.h) / 2,
+               s: (c1.s + c2.s) / 2,
+               l: (c1.l + c2.l) / 2 };
+    };
+    
+    var getIceColor = function(){
+      //ice is between a green and a blue
+      //high l can make it white as well
+      return { h: (rand(60) + 140)/360,
+               s: (rand(25) + 50)/100,
+               l: (rand(25) + 75)/100 };
+    };
+    
+    var getSilicateColor = function(){
+      //rocks are between red and orangeish
+      //low s can make them grey and brown as well
+      var ret = { h: (rand(25) + 10)/360,
+                  s: (rand(60) + 20)/100 };
+               
+      //don't want rocks to be too bright
+      if (ret.s < 0.5) { 
+        ret.l = (rand(60) + 15) / 100;
+      } else {
+        ret.l = (rand(10) + 70) / 100;
+      }
+      return ret;
+    };
+    
+    var getMethaneGasColor = function(){
+      //this is various shades and lightnesses of blue
+      return { h: (rand(35) + 180)/360,
+               s: (rand(5) + 95)/100,
+               l: (rand(20) + 60)/100 };
+    };
+    
+    var getOtherGasColor = function() {
+      //returns red, orange, yellow, or brown
+      var ret = { h: rand(50)/360,
+               s: (rand(50) + 50)/100,
+               l: (rand(20) + 30)/100 };
+      console.log(ret);
+      return ret;
+    };
+    
+    //takes in and returns object {h, s, l}
+    var getDarkerColor = function(color,pct){
+      if(!pct) { pct = 0.2; }
+      var ret = { h: color.h, s: color.s, l: color.l };
+      ret.l = Math.max(0, ret.l - pct);
+      return ret;
+    };
     
     /* BEGIN PUBLIC API */
     
@@ -346,12 +468,24 @@ var Planet = function() {
       
       var radius = Math.min(cx, cy) - (cy/10);
       
-      ctx.fillStyle = getRandomHexColor();
-      ctx.strokeStyle = getDarkerColor(ctx.fillStyle);
+      var color = this._getColorFromComposition();
+      ctx.fillStyle = hslToHex(color);
+      ctx.strokeStyle = hslToHex(getDarkerColor(color));
       ctx.lineWidth = 3;
       
       ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
       ctx.fill();
+      
+      //now draw the craters or clouds or what have you
+      if (this.type === Types.T) {
+        decorateImageT(ctx, color);
+      } else {
+        decorateImageG(ctx, color);
+      }
+      
+      //now draw the outline
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
       ctx.stroke();
     
     };
