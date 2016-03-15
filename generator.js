@@ -170,6 +170,13 @@ var Planet = function() {
         this.composition[gasname] = total;
         
       }
+      
+      //final post processing - this is dumb :(
+      var keys = Object.keys(this.composition);
+      for(var i = 0; i < keys.length; i++) {
+        var key = keys[i];
+        if(this.composition[key] <= 0) { delete this.composition[key]; }
+      }
     };
     
     this._generatePlanetCloudsAndRings = function() {
@@ -300,10 +307,10 @@ var Planet = function() {
         return getOtherGasColor();
       } else {
         var ices = sumIces(this.composition);
-        if (ices > 50) {
+        if (rand(50) + 40 < ices) {
           return getIceColor();
         } else {
-          return getSilicateColor();
+          return getSilicateColor(this.composition);
         }
       }
       //default: return a white planet
@@ -341,28 +348,27 @@ var Planet = function() {
       
     };
     
-    var drawRing = function(ctx, cx, cy, radius, minradius, color) {
+    var drawRing = function(ctx, rotation, radius, minradius, color) {
       //set up colors and width
       ctx.save()
       var ringwidth = Math.min(rand(20) + 2, radius - minradius);
       ctx.lineWidth = ringwidth;
       ctx.strokeStyle = hslToHex(getDarkerColor(color, rand(40)/100 - 0.2));
+      ctx.translate(ctx.canvas.width/2,ctx.canvas.height/2);
+      ctx.rotate(rotation);
+      ctx.scale(1, 0.5);
       
       ctx.save();
       ctx.globalCompositeOperation = "destination-over";
-      ctx.scale(1, 0.5);
-      ctx.translate(0,ctx.canvas.height/2);
       ctx.beginPath();
-      ctx.arc(cx, cy, radius, -Math.PI, Math.PI);
+      ctx.arc(0, 0, radius, -Math.PI, Math.PI);
       ctx.stroke();
       ctx.restore();
     
       //now draw bottom ring
       ctx.save();
-      ctx.scale(1, 0.5);
-      ctx.translate(0,ctx.canvas.height/2);
       ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, Math.PI);
+      ctx.arc(0, 0, radius, 0, Math.PI);
       ctx.stroke();
       ctx.restore();
       
@@ -373,16 +379,50 @@ var Planet = function() {
       return radius - ringwidth - rand(2) - 2;
     };
     
-    var drawRings = function(ctx, cx, cy, radius, color) {
-      var rings = rand(2) + 2;
-      var ringRad = ((rand(4) + 13) / 10) * radius;
-      radius += 7; //buffer includes eventual outline width
+    var drawRings = function(ctx, radius, color) {
+      var rings = rand(4) + 3;
+      var ringRad = ((rand(4) + 30) / 20) * radius;
+      
+      //ring rotation distribution
+      var dist = rand(10);
+      var rotation = rand(10);
+      if (dist > 9) {
+        rotation = rand(90);
+      } else if (dist > 7) {
+        rotation = rand(45);
+      }
+      
+      rotation *= Math.PI/180;
+      radius += 25; //buffer includes eventual outline width
       for(var i = 0; i < rings; i++ && ringRad > radius) {
-        ringRad = drawRing(ctx, cx, cy, ringRad, radius, color);
+        ringRad = drawRing(ctx, rotation, ringRad, radius/2, color);
       }
     }
     
-    var decorateImageG = function(ctx) {
+    var decorateImageG = function(ctx, color, miny, maxy) {
+      if (this.cloudCover > 90) {
+        //you basically can't see anything past the clouds anyway
+        return;
+      }
+      var fade1 = (rand(30) - 15) / 100;
+      var fade2 = (rand(30) - 15) / 100;
+      var fade3 = (rand(30) - 15) / 100;
+      var colors = [ getDarkerColor(color,fade1), getDarkerColor(color,fade2), getDarkerColor(color,fade3) ]
+      var y = miny;
+      var w = ctx.canvas.width;
+      
+      ctx.save();
+      ctx.globalCompositeOperation = "source-atop";
+      
+      while(y < maxy) {
+        ctx.strokeStyle = hslToHex(colors[rand(3)]);
+        ctx.lineWidth = rand(10) + 2;
+        ctx.beginPath();
+        ctx.moveTo(0,y);
+        ctx.lineTo(w,y);
+        ctx.stroke();
+        y += ctx.lineWidth + rand(5) + 2; //add a gap
+      }
     
     };
     
@@ -453,11 +493,18 @@ var Planet = function() {
                l: (rand(25) + 75)/100 };
     };
     
-    var getSilicateColor = function(){
+    var getSilicateColor = function(comp){
       //rocks are between red and orangeish
+      var ret = { h: (rand(25) + 10)/360 };
+      
       //low s can make them grey and brown as well
-      var ret = { h: (rand(25) + 10)/360,
-                  s: (rand(60) + 20)/100 };
+      //the more mafic, the darker the rock
+      var mPct = sumMafics(comp);
+      mPct = Math.min(mPct * 2, 100); //darken faster
+      mPct = 1 - (mPct/100); //subtract from 1 so high mafic = low s
+      
+      //s should range from 20 to 80
+      ret.s = ((mPct * 50) + 20 + rand(10)) / 100;
                
       //don't want rocks to be too bright
       if (ret.s < 0.5) { 
@@ -504,7 +551,7 @@ var Planet = function() {
       var cx = canvas.width/2;
       var cy = canvas.height/2;
       
-      var radius = Math.min(cx, cy) - (cy/10);
+      var radius = Math.min(cx, cy) - (cy/5);
       
       var color = this._getColorFromComposition();
       ctx.fillStyle = hslToHex(color);
@@ -519,7 +566,7 @@ var Planet = function() {
       if (this.type === Types.T) {
         decorateImageT(ctx, color);
       } else {
-        decorateImageG(ctx, color);
+        decorateImageG(ctx, color, cy - radius, cy + radius);
       }
       
       
@@ -530,7 +577,7 @@ var Planet = function() {
       
       //finally-finally, draw any rings
       if(this.rings > 0) {
-        drawRings(ctx,cx,cy,radius, strokeColor);
+        drawRings(ctx, radius, strokeColor);
       }
     
     };
