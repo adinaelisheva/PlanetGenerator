@@ -183,7 +183,7 @@ var Planet = function() {
       this.cloudCover = 0;
       this.rings = 0;
       if (this.type === Types.G) { 
-        this.rings = rand(2) > 0;
+        this.rings = 1;//rand(2) > 0;
       } else {
       
         //my marginally-accurate assumption. If you're too small, no clouds
@@ -348,39 +348,29 @@ var Planet = function() {
       
     };
     
-    var drawRing = function(ctx, rotation, radius, minradius, color) {
+    var drawRing = function(ctx, rotation, radius, width, color, front) {
       //set up colors and width
       ctx.save()
-      var ringwidth = Math.min(rand(20) + 2, radius - minradius);
-      ctx.lineWidth = ringwidth;
-      ctx.strokeStyle = hslToHex(getDarkerColor(color, rand(40)/100 - 0.2));
+      ctx.lineWidth = width;
+      ctx.strokeStyle = color;
       ctx.translate(ctx.canvas.width/2,ctx.canvas.height/2);
       ctx.rotate(rotation);
       ctx.scale(1, 0.5);
+      ctx.globalCompositeOperation = front ? "source-over" : "destination-over";
       
-      ctx.save();
-      ctx.globalCompositeOperation = "destination-over";
+      var frac = Math.PI/20; //a tiny overlap between front and back half of rings
+      var start = front ? 0 : -Math.PI-frac;
+      var end = front ? Math.PI : frac;
+
       ctx.beginPath();
-      ctx.arc(0, 0, radius, -Math.PI, Math.PI);
+      ctx.arc(0, 0, radius, start, end);
       ctx.stroke();
-      ctx.restore();
-    
-      //now draw bottom ring
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(0, 0, radius, 0, Math.PI);
-      ctx.stroke();
-      ctx.restore();
       
-      //restore back to original widths and color
-      ctx.restore();
-      
-      //return a new, smaller radius with a gap
-      return radius - ringwidth - rand(2) - 2;
+      ctx.restore();    
     };
     
     var drawRings = function(ctx, radius, color) {
-      var rings = rand(4) + 3;
+      var numRings = rand(4) + 3;
       var ringRad = ((rand(4) + 30) / 20) * radius;
       
       //ring rotation distribution
@@ -393,9 +383,26 @@ var Planet = function() {
       }
       
       rotation *= Math.PI/180;
-      radius += 25; //buffer includes eventual outline width
-      for(var i = 0; i < rings; i++ && ringRad > radius) {
-        ringRad = drawRing(ctx, rotation, ringRad, radius/2, color);
+      radius += 7; //buffer includes eventual outline width
+      
+      rings = [];
+      for(var i = 0; i < numRings && ringRad > radius; i++) {
+        var ringwidth = Math.min(rand(20) + 2, ringRad - radius);
+        var ringcolor = hslToHex(getDarkerColor(color, rand(40)/100 - 0.2));
+        rings.push({rad: ringRad, width: ringwidth, color: ringcolor});
+        ringRad = ringRad - ringwidth - rand(2) - 2;
+      }
+      
+      //now draw all the back halves in reverse order (destination-over)
+      for(var i = rings.length-1; i >= 0; i--) {
+        var r = rings[i];
+        drawRing(ctx, rotation, r.rad, r.width, r.color, false);
+      }
+      
+      //finally draw all the front halves in order
+      for(var i = 0; i < rings.length; i++) {
+        var r = rings[i];
+        drawRing(ctx, rotation, r.rad, r.width, r.color, true);
       }
     }
     
@@ -588,7 +595,7 @@ var Planet = function() {
     /* "CONSTRUCTOR" SECTION */
     
     this._generatePlanetName();
-    this.type = rand(2);
+    this.type = 1//rand(2);
     this._generatePlanetRadius();
     this._generatePlanetAxis();
     this._generatePlanetComposition();
