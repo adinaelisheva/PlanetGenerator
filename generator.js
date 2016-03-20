@@ -586,7 +586,7 @@ var Planet = function() {
       } else {
         decorateImageG(ctx, color, cy - radius, cy + radius, rotation);
       }
-      
+
       //draw the planet outline
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
