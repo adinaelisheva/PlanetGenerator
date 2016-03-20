@@ -183,7 +183,7 @@ var Planet = function() {
       this.cloudCover = 0;
       this.rings = 0;
       if (this.type === Types.G) { 
-        this.rings = 1;//rand(2) > 0;
+        this.rings = rand(2) > 0;
       } else {
       
         //my marginally-accurate assumption. If you're too small, no clouds
@@ -577,12 +577,12 @@ var Planet = function() {
       }
       
       
-      //finally, draw the outline
+      //draw the planet outline
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
       ctx.stroke();
       
-      //finally-finally, draw any rings
+      //draw any rings after everything else is drawn
       if(this.rings > 0) {
         drawRings(ctx, radius, strokeColor);
       }
@@ -595,7 +595,7 @@ var Planet = function() {
     /* "CONSTRUCTOR" SECTION */
     
     this._generatePlanetName();
-    this.type = 1//rand(2);
+    this.type = rand(2);
     this._generatePlanetRadius();
     this._generatePlanetAxis();
     this._generatePlanetComposition();
