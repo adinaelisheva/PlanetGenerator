@@ -7,16 +7,21 @@ app.controller('ctrl', ['$scope', function($scope) {
     //add some stuff for outputting
     p.printableType = p.type === 1 ? 'Gaseous' : 'Terrestrial';
     
-    //this doesn't really work :/
-    var order = Math.pow(10,10);
-    p.volume = (Math.round(p.getVolume()/order)*order).toExponential();
+    //convert to string to count the number of decimals
+    var v = Math.round(p.getVolume());
+    p.volume = v;
+    var numChars = v.toString().length;
+    var order = Math.pow(10,numChars-3);
+    $scope.showVolume = (Math.round(v/order)/100);
+    $scope.volumeExp = numChars-1;
     
     if(p.type === 1 && p.population > 0) {
       p.population += ' (on moons)';
     }
     
-    
     p.density = Math.round(p.density*100) / 100;
+    
+    p.radius = p.radius.toLocaleString();
     
     var earthVol = 1.08321e12;
     $scope.earths = Math.round(p.volume * 100 / earthVol) / 100;
