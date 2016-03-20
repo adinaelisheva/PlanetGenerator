@@ -409,7 +409,7 @@ var Planet = function() {
       }
     }
     
-    var decorateImageG = function(ctx, color, miny, maxy, rotation) {
+    var decorateImageG = function(ctx, color, maxy, rotation) {
       if (this.cloudCover > 90) {
         //you basically can't see anything past the clouds anyway
         return;
@@ -418,7 +418,7 @@ var Planet = function() {
       var fade2 = (rand(30) - 15) / 100;
       var fade3 = (rand(30) - 15) / 100;
       var colors = [ getDarkerColor(color,fade1), getDarkerColor(color,fade2), getDarkerColor(color,fade3) ]
-      var y = miny;
+      var y = -400; //bit of a hack, this ensures it will cover the planet even when rotated
       var w = ctx.canvas.width;
       
       ctx.save();
@@ -584,7 +584,7 @@ var Planet = function() {
       if (this.type === Types.T) {
         decorateImageT(ctx, color);
       } else {
-        decorateImageG(ctx, color, cy - radius, cy + radius, rotation);
+        decorateImageG(ctx, color, cy + radius, rotation);
       }
 
       //draw the planet outline
