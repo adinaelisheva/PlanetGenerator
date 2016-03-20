@@ -43,3 +43,12 @@ a {
 a:hover {
   color:#3ef;
 }
+
+/* mobile CSS */
+@media only screen and (max-device-width: 600px) {
+  body, table {
+    font-size: 32px;
+  }
+
+}
+
