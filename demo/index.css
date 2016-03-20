@@ -1,0 +1,45 @@
+body, table {
+  background-color: #112;
+  color: #d2d2d2;
+  font-family: Arial;
+  font-weight: bold;
+}
+
+h1#title {
+  padding: 20px;
+  width: 200px;
+  color: #19f;
+}
+
+tr.spaced-out > td:not(:first-child) {
+  padding-left: 50px;
+}
+
+tr {
+  vertical-align: top;
+}
+
+span.category {
+  color: #19f;
+}
+
+canvas#planet {
+  border: 1px solid #19f;
+}
+
+div#main-content {
+  height:90%;
+  min-height: 480px;
+}
+
+div#footer {
+  margin-left:10px;
+}
+
+a {
+  color:#1be;
+}
+
+a:hover {
+  color:#3ef;
+}
