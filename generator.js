@@ -369,20 +369,23 @@ var Planet = function() {
       ctx.restore();    
     };
     
-    var drawRings = function(ctx, radius, color) {
-      var numRings = rand(4) + 3;
-      var ringRad = ((rand(4) + 30) / 20) * radius;
-      
+    //helper function to get a random amount to rotate a ringed planet
+    var generateRotation = function() {
       //ring rotation distribution
-      var dist = rand(10);
+      var r = rand(10);
       var rotation = rand(10);
-      if (dist > 9) {
+      if (r > 9) {
         rotation = rand(90);
-      } else if (dist > 7) {
+      } else if (r > 7) {
         rotation = rand(45);
       }
-      
-      rotation *= Math.PI/180;
+      return rotation * Math.PI/180;
+    }
+    
+    var drawRings = function(ctx, radius, color, rotation) {
+      var numRings = rand(4) + 3;
+      var ringRad = ((rand(4) + 30) / 20) * radius;      
+
       radius += 7; //buffer includes eventual outline width
       
       rings = [];
@@ -406,7 +409,7 @@ var Planet = function() {
       }
     }
     
-    var decorateImageG = function(ctx, color, miny, maxy) {
+    var decorateImageG = function(ctx, color, miny, maxy, rotation) {
       if (this.cloudCover > 90) {
         //you basically can't see anything past the clouds anyway
         return;
@@ -419,6 +422,7 @@ var Planet = function() {
       var w = ctx.canvas.width;
       
       ctx.save();
+      ctx.rotate(rotation);
       ctx.globalCompositeOperation = "source-atop";
       
       while(y < maxy) {
@@ -430,7 +434,8 @@ var Planet = function() {
         ctx.stroke();
         y += ctx.lineWidth + rand(5) + 2; //add a gap
       }
-    
+      
+      ctx.restore();
     };
     
     //*** Utility Functions ***//
@@ -569,13 +574,18 @@ var Planet = function() {
       ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
       ctx.fill();
       
+      //generate a rotation amount for this planet
+      var rotation = 0;
+      if(this.rings > 0) {
+        rotation = generateRotation();
+      }
+      
       //now draw the craters or clouds or what have you
       if (this.type === Types.T) {
         decorateImageT(ctx, color);
       } else {
-        decorateImageG(ctx, color, cy - radius, cy + radius);
+        decorateImageG(ctx, color, cy - radius, cy + radius, rotation);
       }
-      
       
       //draw the planet outline
       ctx.beginPath();
@@ -584,7 +594,7 @@ var Planet = function() {
       
       //draw any rings after everything else is drawn
       if(this.rings > 0) {
-        drawRings(ctx, radius, strokeColor);
+        drawRings(ctx, radius, strokeColor, rotation);
       }
     
     };
