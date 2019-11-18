@@ -250,13 +250,17 @@ var Planet = function() {
       
         var ice = sumIces(this.composition)/100;
         var mafic = sumMafics(this.composition)/100;
-        var felsic = this.composition.silicate/100 - mafic;
+        var felsic = this.composition.silicate ? (this.composition.silicate/100 - mafic) : 1;
         
         var landAlbedo = (ice * .7 + mafic * .1 + felsic * .3) + wobble;
         var cloudAlbedo =  .6 + rand(.3);
         var cc = this.cloudCover / 100;
         this.albedo = cc*cloudAlbedo + (1 - cc)*landAlbedo;
-        
+      }
+      wobble = Math.abs(wobble);
+      // wobble it back above 0 - negative albedo means nothing
+      while (this.albedo < wobble) {
+        this.albedo += wobble;
       }
       this.albedo = Math.round(this.albedo*100)/100;
     }
@@ -539,7 +543,6 @@ var Planet = function() {
       var ret = { h: rand(50)/360,
                s: (rand(50) + 50)/100,
                l: (rand(20) + 30)/100 };
-      console.log(ret);
       return ret;
     };
     
