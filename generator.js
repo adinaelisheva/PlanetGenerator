@@ -290,10 +290,10 @@ var Planet = function() {
     }
     
     this._generatePopulation = function() {
-      var order = (this.type === Types.G ? 4 : 7);
+      var order = (this.type === Types.G ? 3 : 6); // 1 gets added later
       this.population = 0;
-      order = rand(order);
-      if(order === 1) { order = 0; } //single-digit populations don't make sense
+      order = rand(order) + 1;
+      if(order < 3) { order = 0; } //single- and double-digit populations don't make sense
       while(order > 0) {
         order--;
         this.population *= 10;
